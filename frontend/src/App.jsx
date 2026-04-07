@@ -10,6 +10,10 @@ import DashboardPage      from './pages/dashboard/DashboardPage'
 import NotificationsPage  from './pages/notifications/NotificationsPage'
 import UserManagement     from './pages/admin/UserManagement'
 
+// Member 1 — Facilities & Assets
+import ResourcesPage      from './pages/resources/ResourcesPage'
+import ResourceDetailPage from './pages/resources/ResourceDetailPage'
+
 // Placeholder pages for teammates
 const Placeholder = ({ label }) => (
   <div className="card text-center py-16">
@@ -54,6 +58,9 @@ export default function App() {
                 {/* Member 4 — Auth, Roles & Notifications */}
                 <Route path="/dashboard"     element={<DashboardPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+
+                <Route path="/resources"     element={<ResourcesPage />} />
+                <Route path="/resources/:id" element={<ResourceDetailPage />} />
 
                 {/* Member 1 — Facilities & Assets */}
                 <Route path="/resources"
