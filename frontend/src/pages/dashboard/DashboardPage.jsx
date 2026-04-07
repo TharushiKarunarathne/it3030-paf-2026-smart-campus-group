@@ -10,11 +10,9 @@ const ROLE_BADGE = {
 
 function QuickLink({ to, label, icon }) {
   return (
-    <Link
-      to={to}
+    <Link to={to}
       className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50
-                 transition-colors border border-gray-200"
-    >
+                 transition-colors border border-gray-200">
       <span className="text-xl">{icon}</span>
       <span className="text-sm font-medium text-gray-700">{label}</span>
     </Link>
@@ -23,10 +21,8 @@ function QuickLink({ to, label, icon }) {
 
 function StatCard({ label, value, to, color }) {
   return (
-    <Link
-      to={to}
-      className="card hover:shadow-md transition-shadow flex flex-col gap-2 cursor-pointer"
-    >
+    <Link to={to}
+      className="card hover:shadow-md transition-shadow flex flex-col gap-2 cursor-pointer">
       <span className={`text-xs font-medium uppercase tracking-wide ${color}`}>
         {label}
       </span>
@@ -54,13 +50,79 @@ export default function DashboardPage() {
         </div>
         <p className="text-gray-500 text-sm">
           {new Date().toLocaleDateString('en-GB', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
+            weekday: 'long', day: 'numeric',
+            month: 'long', year: 'numeric',
           })}
         </p>
       </div>
+
+      {/* Admin banner */}
+      {isAdmin && (
+        <div className="card border-purple-200 bg-purple-50/40 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-2xl">👑</span>
+            <div>
+              <h2 className="text-base font-semibold text-purple-900">
+                Admin Control Panel
+              </h2>
+              <p className="text-xs text-purple-600">
+                You have full access to manage the Smart Campus system
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Link to="/admin/users"
+              className="text-center p-3 bg-white rounded-lg border border-purple-100
+                         hover:shadow-sm transition-shadow">
+              <p className="text-2xl font-bold text-purple-700">👥</p>
+              <p className="text-xs text-gray-600 mt-1 font-medium">Manage users</p>
+            </Link>
+            <Link to="/bookings"
+              className="text-center p-3 bg-white rounded-lg border border-purple-100
+                         hover:shadow-sm transition-shadow">
+              <p className="text-2xl font-bold text-green-600">📅</p>
+              <p className="text-xs text-gray-600 mt-1 font-medium">All bookings</p>
+            </Link>
+            <Link to="/tickets"
+              className="text-center p-3 bg-white rounded-lg border border-purple-100
+                         hover:shadow-sm transition-shadow">
+              <p className="text-2xl font-bold text-red-600">🔧</p>
+              <p className="text-xs text-gray-600 mt-1 font-medium">All tickets</p>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Technician banner */}
+      {isTechnician && (
+        <div className="card border-blue-200 bg-blue-50/40 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-2xl">🔧</span>
+            <div>
+              <h2 className="text-base font-semibold text-blue-900">
+                Technician Dashboard
+              </h2>
+              <p className="text-xs text-blue-600">
+                Manage and resolve assigned maintenance tickets
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Link to="/tickets?status=OPEN"
+              className="text-center p-3 bg-white rounded-lg border border-blue-100
+                         hover:shadow-sm transition-shadow">
+              <p className="text-2xl font-bold text-orange-600">📋</p>
+              <p className="text-xs text-gray-600 mt-1 font-medium">Open tickets</p>
+            </Link>
+            <Link to="/tickets?status=IN_PROGRESS"
+              className="text-center p-3 bg-white rounded-lg border border-blue-100
+                         hover:shadow-sm transition-shadow">
+              <p className="text-2xl font-bold text-blue-600">⚙️</p>
+              <p className="text-xs text-gray-600 mt-1 font-medium">In progress</p>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -71,13 +133,13 @@ export default function DashboardPage() {
           color="text-blue-600"
         />
         <StatCard
-          label="My Bookings"
+          label={isAdmin ? 'All Bookings' : 'My Bookings'}
           value="—"
           to="/bookings"
           color="text-green-600"
         />
         <StatCard
-          label="My Tickets"
+          label={isAdmin ? 'All Tickets' : 'My Tickets'}
           value="—"
           to="/tickets"
           color="text-orange-600"
@@ -97,15 +159,22 @@ export default function DashboardPage() {
             Quick actions
           </h2>
           <div className="grid grid-cols-2 gap-2">
-            <QuickLink to="/bookings/new"       label="New booking"      icon="📅" />
-            <QuickLink to="/tickets/new"         label="Report issue"     icon="🔧" />
-            <QuickLink to="/resources"           label="Browse resources" icon="🏛️" />
-            <QuickLink to="/notifications"       label="Notifications"    icon="🔔" />
+            {!isAdmin && (
+              <>
+                <QuickLink to="/bookings/new" label="New booking"      icon="📅" />
+                <QuickLink to="/tickets/new"  label="Report issue"     icon="🔧" />
+              </>
+            )}
+            <QuickLink to="/resources"      label="Browse resources" icon="🏛️" />
+            <QuickLink to="/notifications"  label="Notifications"    icon="🔔" />
             {(isAdmin || isTechnician) && (
-              <QuickLink to="/tickets?status=OPEN" label="Open tickets"  icon="📋" />
+              <QuickLink to="/tickets?status=OPEN" label="Open tickets" icon="📋" />
             )}
             {isAdmin && (
-              <QuickLink to="/admin/users"       label="Manage users"     icon="👥" />
+              <>
+                <QuickLink to="/admin/users"  label="Manage users"    icon="👥" />
+                <QuickLink to="/bookings"     label="Review bookings" icon="✅" />
+              </>
             )}
           </div>
         </div>
@@ -115,10 +184,8 @@ export default function DashboardPage() {
             <h2 className="text-base font-semibold text-gray-900">
               Recent activity
             </h2>
-            <Link
-              to="/notifications"
-              className="text-xs text-primary-600 hover:underline"
-            >
+            <Link to="/notifications"
+              className="text-xs text-primary-600 hover:underline">
               View all
             </Link>
           </div>
