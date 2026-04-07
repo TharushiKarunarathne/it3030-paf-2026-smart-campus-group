@@ -9,11 +9,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
-
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
     // POST /api/auth/google
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> body) {

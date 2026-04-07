@@ -7,7 +7,6 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.smartcampus.model.User;
 import com.smartcampus.repository.UserRepository;
 import com.smartcampus.security.JwtUtil;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,15 +16,22 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository    userRepository;
-    private final JwtUtil           jwtUtil;
-    private final PasswordEncoder   passwordEncoder;
+    private final UserRepository  userRepository;
+    private final JwtUtil         jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${google.client-id}")
     private String googleClientId;
+
+    public AuthService(UserRepository userRepository,
+                       JwtUtil jwtUtil,
+                       PasswordEncoder passwordEncoder) {
+        this.userRepository  = userRepository;
+        this.jwtUtil         = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     // Google OAuth login
     public Map<String, Object> loginWithGoogle(String credential) throws Exception {
@@ -45,13 +51,11 @@ public class AuthService {
         String name     = (String) payload.get("name");
         String picture  = (String) payload.get("picture");
 
-        // Find existing user or create new one
         User user = userRepository.findByGoogleId(googleId)
                 .or(() -> userRepository.findByEmail(email))
                 .orElse(null);
 
         if (user == null) {
-            // First time Google login — create account
             user = User.builder()
                     .googleId(googleId)
                     .email(email)
@@ -60,7 +64,6 @@ public class AuthService {
                     .role(User.Role.USER)
                     .build();
         } else {
-            // Update profile info
             user.setName(name);
             user.setPicture(picture);
             user.setGoogleId(googleId);
@@ -87,7 +90,7 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
-    // Register with email & password (for admin to create accounts)
+    // Register with email & password
     public Map<String, Object> register(String name, String email, String password) {
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email already in use");
