@@ -119,6 +119,35 @@ export default function ResourceDetailPage() {
             </div>
           )}
         </div>
+        {/* Type-specific details */}
+{resource.details && Object.keys(resource.details).length > 0 && (
+  <div className="mb-6">
+    <h2 className="text-sm font-semibold text-gray-700 mb-3">Facilities & Details</h2>
+    <div className="grid grid-cols-2 gap-2">
+      {Object.entries(resource.details).map(([key, value]) => {
+        if (value === '' || value === null) return null
+        const label = key
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, s => s.toUpperCase())
+        return (
+          <div key={key} className="bg-gray-50 rounded-lg px-3 py-2 flex items-center gap-2">
+            {typeof value === 'boolean' ? (
+              <>
+                <span>{value ? '✅' : '❌'}</span>
+                <span className="text-xs text-gray-600">{label}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-gray-400">{label}:</span>
+                <span className="text-xs font-medium text-gray-800">{value}</span>
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  </div>
+)}
 
         {/* Description */}
         {resource.description && (
