@@ -25,3 +25,6 @@ export const uploadAttachment = (id, formData) =>
   api.post(`/tickets/${id}/attachments`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+
+  export const resolveTicket = (id, resolutionNote) =>
+  api.patch(`/tickets/${id}/resolve`, { resolutionNote })
