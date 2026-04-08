@@ -107,6 +107,27 @@ public class TicketController {
         }
     }
 
+    // PATCH /api/tickets/{id}/resolve
+    // TECHNICIAN and ADMIN only — sets status to RESOLVED + saves resolution note
+    @PatchMapping("/{id}/resolve")
+    public ResponseEntity<?> resolveTicket(
+        @PathVariable String id,
+        @RequestBody Map<String, String> body,
+        @AuthenticationPrincipal User currentUser) {
+    try {
+        String note = body.get("resolutionNote");
+        if (note == null || note.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Resolution note is required"));
+        }
+        Ticket ticket = ticketService.resolveTicket(id, note, currentUser);
+        return ResponseEntity.ok(ticket);
+    } catch (Exception e) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+    }
+}
+
     // PUT /api/tickets/{id}/assign
     // ADMIN only
     @PutMapping("/{id}/assign")
