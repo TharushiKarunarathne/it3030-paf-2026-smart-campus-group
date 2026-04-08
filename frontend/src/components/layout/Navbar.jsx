@@ -10,15 +10,15 @@ const ROLE_BADGE = {
 }
 
 const NAV_LINKS = [
-  { to: '/dashboard',   label: 'Dashboard', roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
-  { to: '/resources',   label: 'Resources', roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
-  { to: '/bookings',    label: 'Bookings',  roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
-  { to: '/tickets',     label: 'Tickets',   roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
-  { to: '/admin/users', label: 'Users',     roles: ['ADMIN'] },
+  { to: '/dashboard',      label: 'Dashboard',     roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
+  { to: '/resources',      label: 'Resources',     roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
+  { to: '/bookings',       label: 'Bookings',      roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
+  { to: '/tickets',        label: 'Tickets',       roles: ['USER', 'ADMIN', 'TECHNICIAN'] },
+  { to: '/admin/users',    label: 'Users',         roles: ['ADMIN'] },
 ]
 
 export default function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -105,18 +105,45 @@ export default function Navbar() {
 
                   {/* Menu items */}
                   <div className="py-1">
+
+                    {/* Admin only links */}
+                    {isAdmin && (
+                      <>
+                        <Link
+                          to="/admin/bookings"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm
+                                     text-gray-700 hover:bg-gray-50"
+                        >
+                          <span>📋</span> Booking Queue
+                        </Link>
+                        <Link
+                          to="/admin/users"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm
+                                     text-gray-700 hover:bg-gray-50"
+                        >
+                          <span>👥</span> Manage Users
+                        </Link>
+                        <div className="border-t border-gray-100 my-1" />
+                      </>
+                    )}
+
                     <Link
                       to="/notifications"
                       onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-2 px-4 py-2 text-sm
+                                 text-gray-700 hover:bg-gray-50"
                     >
-                      Notifications
+                      <span>🔔</span> Notifications
                     </Link>
+
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="w-full text-left px-4 py-2 text-sm
+                                 text-red-600 hover:bg-red-50 flex items-center gap-2"
                     >
-                      Log out
+                      <span>🚪</span> Log out
                     </button>
                   </div>
                 </div>

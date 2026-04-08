@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getMyBookings, deleteBooking } from '../../api/bookingApi'
+import { getMyBookings, getAllBookings, deleteBooking, updateBookingStatus } from '../../api/bookingApi'
+import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
 
 const STATUS_CONFIG = {
@@ -50,22 +51,66 @@ function calcDuration(start, end) {
 }
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState([])
-  const [loading, setLoading]  = useState(true)
-  const [tab, setTab]          = useState('ALL')
+  const { isAdmin } = useAuth()
+  const [bookings, setBookings]     = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [tab, setTab]               = useState('ALL')
+  const [rejectId, setRejectId]     = useState(null)
+  const [rejectNote, setRejectNote] = useState('')
+  const [actioning, setActioning]   = useState(false)
 
   useEffect(() => { fetchBookings() }, [])
 
   const fetchBookings = async () => {
     try {
       setLoading(true)
-      const { data } = await getMyBookings()
+      // Admin sees ALL bookings, regular user sees only their own
+      const { data } = isAdmin
+        ? await getAllBookings()
+        : await getMyBookings()
       setBookings(Array.isArray(data) ? data : [])
     } catch {
       toast.error('Failed to load bookings.')
       setBookings([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleApprove = async (id) => {
+    try {
+      setActioning(true)
+      const { data } = await updateBookingStatus(id, 'APPROVED', '')
+      setBookings(prev => prev.map(b => b.id === id ? data : b))
+      toast.success('Booking approved!')
+    } catch {
+      toast.error('Failed to approve.')
+    } finally {
+      setActioning(false)
+    }
+  }
+
+  const handleReject = (id) => {
+    setRejectId(id)
+    setRejectNote('')
+  }
+
+  const handleRejectConfirm = async () => {
+    if (!rejectNote.trim()) {
+      toast.error('Please enter a rejection reason.')
+      return
+    }
+    try {
+      setActioning(true)
+      const { data } = await updateBookingStatus(rejectId, 'REJECTED', rejectNote)
+      setBookings(prev => prev.map(b => b.id === rejectId ? data : b))
+      setRejectId(null)
+      setRejectNote('')
+      toast.success('Booking rejected.')
+    } catch {
+      toast.error('Failed to reject.')
+    } finally {
+      setActioning(false)
     }
   }
 
@@ -98,17 +143,28 @@ export default function BookingsPage() {
         <div className="px-8 py-7">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-white mb-1">My Bookings</h1>
-              <p className="text-blue-200 text-sm">Track and manage your resource reservations</p>
+              <h1 className="text-2xl font-bold text-white mb-1">
+                {isAdmin ? 'All Bookings' : 'My Bookings'}
+              </h1>
+              <p className="text-blue-200 text-sm">
+                {isAdmin
+                  ? 'Review and manage all campus resource booking requests'
+                  : 'Track and manage your resource reservations'
+                }
+              </p>
             </div>
-            <Link
-              to="/bookings/new"
-              className="flex items-center gap-2 bg-white/15 hover:bg-white/25
-                         border border-white/30 text-white text-sm font-medium
-                         px-4 py-2.5 rounded-xl transition-colors">
-              + New Booking
-            </Link>
+            {!isAdmin && (
+              <Link
+                to="/bookings/new"
+                className="flex items-center gap-2 bg-white/15 hover:bg-white/25
+                           border border-white/30 text-white text-sm font-medium
+                           px-4 py-2.5 rounded-xl transition-colors">
+                + New Booking
+              </Link>
+            )}
           </div>
+
+          {/* Stats */}
           <div className="flex gap-8">
             {[
               { label: 'Pending',  count: counts.PENDING,  color: 'text-amber-300' },
@@ -151,35 +207,48 @@ export default function BookingsPage() {
         ))}
       </div>
 
-      {/* List */}
+      {/* Results count */}
+      <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-4">
+        Showing {filtered.length} {tab === 'ALL' ? 'total' : tab.toLowerCase()} bookings
+      </p>
+
+      {/* Booking list */}
       {loading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 h-20 animate-pulse">
-              <div className="h-3 bg-gray-100 rounded w-1/3 mb-2" />
-              <div className="h-3 bg-gray-100 rounded w-1/2" />
+            <div key={i}
+              className="bg-white rounded-2xl border border-gray-100 p-4 h-24 animate-pulse">
+              <div className="h-3 bg-gray-100 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-gray-100 rounded w-2/3" />
             </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="card text-center py-20">
           <p className="text-4xl mb-4">📅</p>
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No bookings found</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            No bookings found
+          </h3>
           <p className="text-sm text-gray-400 mb-5">
             {tab === 'ALL'
-              ? "You haven't made any bookings yet."
-              : `No ${STATUS_CONFIG[tab].label.toLowerCase()} bookings.`}
+              ? isAdmin
+                ? 'No bookings have been made yet.'
+                : "You haven't made any bookings yet."
+              : `No ${STATUS_CONFIG[tab]?.label.toLowerCase()} bookings.`
+            }
           </p>
-          <Link to="/resources" className="btn-primary inline-block">
-            Browse resources
-          </Link>
+          {!isAdmin && (
+            <Link to="/bookings/new" className="btn-primary inline-block">
+              Browse resources
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(booking => {
             const status = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.PENDING
             const icon   = TYPE_ICON[booking.resourceType] ?? '📦'
-            const iconBg = TYPE_BG[booking.resourceType]  ?? 'bg-gray-50'
+            const iconBg = TYPE_BG[booking.resourceType]   ?? 'bg-gray-50'
 
             return (
               <div key={booking.id}
@@ -189,70 +258,146 @@ export default function BookingsPage() {
                 {/* Status accent bar */}
                 <div className={`h-0.5 rounded-t-2xl ${
                   booking.status === 'APPROVED' ? 'bg-green-400' :
-                  booking.status === 'REJECTED' ? 'bg-red-400' :
-                  'bg-amber-400'
+                  booking.status === 'REJECTED' ? 'bg-red-400'   : 'bg-amber-400'
                 }`} />
 
-                <div className="p-4 flex items-center gap-4">
-                  {/* Icon */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center
-                                   justify-center text-xl flex-shrink-0 ${iconBg}`}>
-                    {icon}
-                  </div>
+                <div className="p-4">
+                  {/* Main row */}
+                  <div className="flex items-start gap-4">
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="font-semibold text-gray-900 text-sm truncate">
-                        {booking.resourceName}
-                      </h3>
-                      <span className={`flex-shrink-0 inline-flex items-center gap-1
-                                        px-2.5 py-1 rounded-full text-xs font-medium border
-                                        ${status.badge}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-                        {status.label}
-                      </span>
+                    {/* Icon */}
+                    <div className={`w-10 h-10 rounded-xl flex items-center
+                                     justify-center text-xl flex-shrink-0 ${iconBg}`}>
+                      {icon}
                     </div>
-                    <p className="text-xs text-gray-500">
-                      📅 {formatDate(booking.startTime)} &nbsp;·&nbsp;
-                      🕐 {formatTime(booking.startTime)} – {formatTime(booking.endTime)} &nbsp;·&nbsp;
-                      ⏱ {calcDuration(booking.startTime, booking.endTime)}
-                    </p>
-                    {booking.purpose && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        "{booking.purpose}"
-                      </p>
-                    )}
-                    {booking.status === 'REJECTED' && booking.adminNote && (
-                      <p className="text-xs text-red-500 mt-0.5">
-                        Reason: {booking.adminNote}
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 flex-shrink-0">
-                    <Link
-                      to={`/bookings/${booking.id}`}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-gray-50
-                                 text-gray-600 border border-gray-100 hover:bg-gray-100
-                                 transition-colors">
-                      View
-                    </Link>
-                    {booking.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleCancel(booking.id)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-red-50
-                                   text-red-600 border border-red-100 hover:bg-red-100
-                                   transition-colors">
-                        Cancel
-                      </button>
-                    )}
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <h3 className="font-semibold text-gray-900 text-sm">
+                          {booking.resourceName}
+                        </h3>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1
+                                          rounded-full text-xs font-medium border
+                                          ${status.badge}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                          {status.label}
+                        </span>
+                      </div>
+
+                      {/* Admin sees who made the booking */}
+                      {isAdmin && (
+                        <p className="text-xs text-indigo-600 font-medium mb-0.5">
+                          👤 {booking.userName ?? booking.userEmail ?? 'Unknown user'}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-gray-500">
+                        📅 {formatDate(booking.startTime)} &nbsp;·&nbsp;
+                        🕐 {formatTime(booking.startTime)} – {formatTime(booking.endTime)} &nbsp;·&nbsp;
+                        ⏱ {calcDuration(booking.startTime, booking.endTime)}
+                      </p>
+
+                      {booking.purpose && (
+                        <p className="text-xs text-gray-400 mt-0.5 italic truncate">
+                          "{booking.purpose}"
+                        </p>
+                      )}
+
+                      {/* Rejection reason */}
+                      {booking.status === 'REJECTED' && booking.adminNote && (
+                        <p className="text-xs text-red-500 mt-0.5">
+                          Reason: {booking.adminNote}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                      <Link
+                        to={`/bookings/${booking.id}`}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-gray-50
+                                   text-gray-600 border border-gray-100
+                                   hover:bg-gray-100 transition-colors">
+                        View
+                      </Link>
+
+                      {/* Admin approve/reject buttons */}
+                      {isAdmin && booking.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(booking.id)}
+                            disabled={actioning}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-green-50
+                                       text-green-700 border border-green-200
+                                       hover:bg-green-100 transition-colors font-medium
+                                       disabled:opacity-50">
+                            ✓ Approve
+                          </button>
+                          <button
+                            onClick={() => handleReject(booking.id)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-red-50
+                                       text-red-600 border border-red-200
+                                       hover:bg-red-100 transition-colors font-medium">
+                            ✗ Reject
+                          </button>
+                        </>
+                      )}
+
+                      {/* User cancel button — only for their own PENDING bookings */}
+                      {!isAdmin && booking.status === 'PENDING' && (
+                        <button
+                          onClick={() => handleCancel(booking.id)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-red-50
+                                     text-red-600 border border-red-100
+                                     hover:bg-red-100 transition-colors">
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Reject modal */}
+      {rejectId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center
+                        justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="font-bold text-gray-900 text-lg mb-1">
+              Reject booking
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Provide a reason so the user understands why.
+            </p>
+            <textarea
+              className="input resize-none mb-4"
+              rows={3}
+              placeholder="e.g. Room reserved for faculty on that day..."
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={handleRejectConfirm}
+                disabled={actioning}
+                className="flex-1 py-2.5 text-sm font-medium rounded-xl
+                           bg-red-600 text-white hover:bg-red-700
+                           transition-colors disabled:opacity-50">
+                Confirm rejection
+              </button>
+              <button
+                onClick={() => { setRejectId(null); setRejectNote('') }}
+                className="px-4 py-2.5 text-sm rounded-xl bg-gray-100
+                           text-gray-600 hover:bg-gray-200 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
