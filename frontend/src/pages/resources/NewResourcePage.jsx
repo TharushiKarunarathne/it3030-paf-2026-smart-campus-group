@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { createResource } from '../../api/resourceApi'
 import toast from 'react-hot-toast'
 
