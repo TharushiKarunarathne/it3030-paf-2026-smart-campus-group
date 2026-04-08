@@ -9,6 +9,7 @@ import LoginPage          from './pages/auth/LoginPage'
 import DashboardPage      from './pages/dashboard/DashboardPage'
 import NotificationsPage  from './pages/notifications/NotificationsPage'
 import UserManagement     from './pages/admin/UserManagement'
+import ProfilePage from './pages/profile/ProfilePage'
 
 // Placeholder pages for teammates
 const Placeholder = ({ label }) => (
@@ -54,6 +55,7 @@ export default function App() {
                 {/* Member 4 — Auth, Roles & Notifications */}
                 <Route path="/dashboard"     element={<DashboardPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
 
                 {/* Member 1 — Facilities & Assets */}
                 <Route path="/resources"
