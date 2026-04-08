@@ -17,7 +17,7 @@ const PRIORITY_STYLES = {
   HIGH:   { bg: 'bg-red-100',    text: 'text-red-700',    label: 'High' },
 }
 
-const CATEGORIES = ['All', 'Electrical', 'Plumbing', 'HVAC', 'Network', 'Furniture', 'Cleaning', 'Security', 'Other']
+const CATEGORIES = ['All', 'Lecture Halls', 'Computer Labs', 'Vehicles', 'Sports', 'Meeting Rooms', 'Library']
 const STATUSES   = ['All', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
 
 function timeAgo(dateStr) {

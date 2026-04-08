@@ -33,6 +33,7 @@ public class Ticket {
 
     // Image attachment URL
     private String imageUrl;
+    private String resolutionNote;
 
     // Embedded comments
     private List<Comment> comments = new ArrayList<>();
@@ -62,6 +63,8 @@ public class Ticket {
     public String getAssignedToId()     { return assignedToId; }
     public String getAssignedToName()   { return assignedToName; }
     public String getImageUrl()         { return imageUrl; }
+    public String getResolutionNote()              { return resolutionNote; }
+    public void setResolutionNote(String resolutionNote) { this.resolutionNote = resolutionNote; }
     public List<Comment> getComments()  { return comments; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
