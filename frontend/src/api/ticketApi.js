@@ -28,3 +28,6 @@ export const uploadAttachment = (id, formData) =>
 
   export const resolveTicket = (id, resolutionNote) =>
   api.patch(`/tickets/${id}/resolve`, { resolutionNote })
+
+  export const deleteTicket = (id) =>
+  api.delete(`/tickets/${id}`)
