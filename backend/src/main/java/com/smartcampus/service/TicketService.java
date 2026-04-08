@@ -138,6 +138,44 @@ public class TicketService {
         return saved;
     }
 
+    // ─── RESOLVE WITH NOTE ───────────────────────────────────────────────────
+
+public Ticket resolveTicket(String ticketId, String resolutionNote, User currentUser) {
+    // Only TECHNICIAN and ADMIN can resolve
+    if (currentUser.getRole() == User.Role.USER) {
+        throw new RuntimeException("Users cannot resolve tickets");
+    }
+
+    if (resolutionNote == null || resolutionNote.isBlank()) {
+        throw new RuntimeException("Resolution note is required");
+    }
+
+    Ticket ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+    if (ticket.getStatus() == Ticket.Status.RESOLVED ||
+        ticket.getStatus() == Ticket.Status.CLOSED) {
+        throw new RuntimeException("Ticket is already resolved or closed");
+    }
+
+    ticket.setStatus(Ticket.Status.RESOLVED);
+    ticket.setResolutionNote(resolutionNote.trim());
+
+    Ticket saved = ticketRepository.save(ticket);
+
+    // Notify the reporter
+    if (!ticket.getReportedById().equals(currentUser.getId())) {
+        notificationService.createNotification(
+                ticket.getReportedById(),
+                "Your ticket \"" + ticket.getTitle() + "\" has been resolved by " + currentUser.getName(),
+                Notification.NotificationType.TICKET_UPDATED,
+                ticketId
+        );
+    }
+
+    return saved;
+}
+
     // ─── ASSIGN TECHNICIAN ───────────────────────────────────────────────────
 
     public Ticket assignTechnician(String ticketId, String technicianId, User currentUser) {
