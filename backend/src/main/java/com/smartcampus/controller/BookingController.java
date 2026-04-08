@@ -4,7 +4,6 @@ import com.smartcampus.model.Booking;
 import com.smartcampus.model.User;
 import com.smartcampus.service.BookingService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,19 +20,42 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
-    // GET /api/bookings
-    // Regular user sees their own bookings only
-    @GetMapping
-    public ResponseEntity<List<Booking>> getMyBookings(
-            @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(bookingService.getMyBookings(user.getId()));
+    // Helper — check if the logged-in user is admin
+    private boolean isAdmin(User user) {
+        return user != null &&
+               user.getRole() != null &&
+               user.getRole().name().equalsIgnoreCase("ADMIN");
     }
 
-    // GET /api/bookings/all — Admin only
+    // GET /api/bookings — user sees own, admin sees all
+    @GetMapping
+    public ResponseEntity<?> getMyBookings(
+            @AuthenticationPrincipal User user) {
+        try {
+            List<Booking> bookings = isAdmin(user)
+                ? bookingService.getAllBookings()
+                : bookingService.getMyBookings(user.getId());
+            return ResponseEntity.ok(bookings);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // GET /api/bookings/all — admin only
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Booking>> getAllBookings() {
-        return ResponseEntity.ok(bookingService.getAllBookings());
+    public ResponseEntity<?> getAllBookings(
+            @AuthenticationPrincipal User user) {
+        if (!isAdmin(user)) {
+            return ResponseEntity.status(403)
+                .body(Map.of("error", "Admin access required"));
+        }
+        try {
+            return ResponseEntity.ok(bookingService.getAllBookings());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        }
     }
 
     // GET /api/bookings/{id}
@@ -44,12 +66,9 @@ public class BookingController {
         try {
             Booking booking = bookingService.getBookingById(id);
 
-            // Only owner or admin can view
-            boolean isAdmin = user.getRole() != null &&
-                              user.getRole().name().equals("ADMIN");
-            boolean isOwner = booking.getUserId().equals(user.getId());
+            boolean owner = booking.getUserId().equals(user.getId());
 
-            if (!isAdmin && !isOwner) {
+            if (!isAdmin(user) && !owner) {
                 return ResponseEntity.status(403)
                     .body(Map.of("error", "Access denied"));
             }
@@ -62,16 +81,20 @@ public class BookingController {
     }
 
     // GET /api/bookings/resource/{resourceId}
-    // Check availability for a resource
     @GetMapping("/resource/{resourceId}")
-    public ResponseEntity<List<Booking>> getBookingsByResource(
+    public ResponseEntity<?> getBookingsByResource(
             @PathVariable String resourceId) {
-        return ResponseEntity.ok(
-            bookingService.getBookingsByResource(resourceId)
-        );
+        try {
+            return ResponseEntity.ok(
+                bookingService.getBookingsByResource(resourceId)
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        }
     }
 
-    // POST /api/bookings — Any logged-in user
+    // POST /api/bookings — any logged-in user including admin
     @PostMapping
     public ResponseEntity<?> createBooking(
             @RequestBody Map<String, Object> body,
@@ -85,23 +108,31 @@ public class BookingController {
         }
     }
 
-    // PATCH /api/bookings/{id}/status — Admin only
+    // PATCH /api/bookings/{id}/status — admin only
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateStatus(
             @PathVariable String id,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal User user) {
+
+        // Manual admin check — no @PreAuthorize needed
+        if (!isAdmin(user)) {
+            return ResponseEntity.status(403)
+                .body(Map.of("error", "Admin access required"));
+        }
+
         try {
             String status    = body.get("status");
-            String adminNote = body.get("adminNote");
+            String adminNote = body.getOrDefault("adminNote", "");
 
-            if (status == null) {
+            if (status == null || status.isBlank()) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Status is required"));
             }
 
-            Booking updated = bookingService.updateStatus(id, status, adminNote, user);
+            Booking updated = bookingService.updateStatus(
+                id, status, adminNote, user
+            );
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
             return ResponseEntity.badRequest()
@@ -109,15 +140,16 @@ public class BookingController {
         }
     }
 
-    // DELETE /api/bookings/{id}
-    // Owner can cancel PENDING, Admin can cancel any
+    // DELETE /api/bookings/{id} — owner or admin
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteBooking(
             @PathVariable String id,
             @AuthenticationPrincipal User user) {
         try {
             bookingService.deleteBooking(id, user);
-            return ResponseEntity.ok(Map.of("message", "Booking cancelled successfully"));
+            return ResponseEntity.ok(
+                Map.of("message", "Booking cancelled successfully")
+            );
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));

@@ -1,10 +1,10 @@
 import api from './axiosConfig'
 
-export const getMyBookings = (params) =>
-  api.get('/bookings', { params })
+export const getMyBookings = () =>
+  api.get('/bookings')
 
-export const getAllBookings = (params) =>
-  api.get('/bookings/all', { params })
+export const getAllBookings = () =>
+  api.get('/bookings/all')
 
 export const getBookingById = (id) =>
   api.get(`/bookings/${id}`)

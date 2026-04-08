@@ -4,7 +4,6 @@ import com.smartcampus.security.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,7 +20,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+// ── REMOVED @EnableMethodSecurity — was interfering with manual role checks ──
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
@@ -40,15 +39,23 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // Resources — read is public, write is admin only (handled by @PreAuthorize)
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/resources/**").permitAll()
-                
-                // Bookings — all authenticated users
-                .requestMatchers(HttpMethod.GET, "/api/bookings/all").hasRole("ADMIN")
-                .requestMatchers("/api/bookings/**").authenticated()
-                
-                .requestMatchers("/api/users").hasRole("ADMIN")
-                .requestMatchers("/api/users/*/role").hasRole("ADMIN")
+                // Resources — GET is public, everything else authenticated
+                .requestMatchers(HttpMethod.GET,    "/api/resources/**").permitAll()
+                .requestMatchers(HttpMethod.POST,   "/api/resources/**").authenticated()
+                .requestMatchers(HttpMethod.PUT,    "/api/resources/**").authenticated()
+                .requestMatchers(HttpMethod.PATCH,  "/api/resources/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/resources/**").authenticated()
+
+                // Bookings — all methods explicitly allowed for authenticated users
+                // role checks are handled manually inside BookingController
+                .requestMatchers(HttpMethod.GET,    "/api/bookings/**").authenticated()
+                .requestMatchers(HttpMethod.POST,   "/api/bookings/**").authenticated()
+                .requestMatchers(HttpMethod.PATCH,  "/api/bookings/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").authenticated()
+
+                // Users
+                .requestMatchers("/api/users/**").authenticated()
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter,
@@ -61,7 +68,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // ── PATCH and PUT added — was missing, caused 403 on approve/reject ──
+        config.setAllowedMethods(List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+        ));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

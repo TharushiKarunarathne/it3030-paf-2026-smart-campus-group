@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getMyBookings, getAllBookings, deleteBooking, updateBookingStatus } from '../../api/bookingApi'
+import {
+  getMyBookings,
+  getAllBookings,
+  deleteBooking,
+  updateBookingStatus,
+} from '../../api/bookingApi'
 import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
 
@@ -58,13 +63,13 @@ export default function BookingsPage() {
   const [rejectId, setRejectId]     = useState(null)
   const [rejectNote, setRejectNote] = useState('')
   const [actioning, setActioning]   = useState(false)
+  const [search, setSearch]         = useState('')
 
   useEffect(() => { fetchBookings() }, [])
 
   const fetchBookings = async () => {
     try {
       setLoading(true)
-      // Admin sees ALL bookings, regular user sees only their own
       const { data } = isAdmin
         ? await getAllBookings()
         : await getMyBookings()
@@ -83,14 +88,14 @@ export default function BookingsPage() {
       const { data } = await updateBookingStatus(id, 'APPROVED', '')
       setBookings(prev => prev.map(b => b.id === id ? data : b))
       toast.success('Booking approved!')
-    } catch {
-      toast.error('Failed to approve.')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to approve.')
     } finally {
       setActioning(false)
     }
   }
 
-  const handleReject = (id) => {
+  const handleRejectOpen = (id) => {
     setRejectId(id)
     setRejectNote('')
   }
@@ -107,8 +112,8 @@ export default function BookingsPage() {
       setRejectId(null)
       setRejectNote('')
       toast.success('Booking rejected.')
-    } catch {
-      toast.error('Failed to reject.')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reject.')
     } finally {
       setActioning(false)
     }
@@ -125,19 +130,28 @@ export default function BookingsPage() {
     }
   }
 
-  const filtered = tab === 'ALL'
-    ? bookings
-    : bookings.filter(b => b.status === tab)
-
   const counts = {
     PENDING:  bookings.filter(b => b.status === 'PENDING').length,
     APPROVED: bookings.filter(b => b.status === 'APPROVED').length,
     REJECTED: bookings.filter(b => b.status === 'REJECTED').length,
   }
 
+  const filtered = bookings
+    .filter(b => tab === 'ALL' || b.status === tab)
+    .filter(b => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return (
+        b.resourceName?.toLowerCase().includes(q) ||
+        b.userName?.toLowerCase().includes(q) ||
+        b.userEmail?.toLowerCase().includes(q) ||
+        b.purpose?.toLowerCase().includes(q)
+      )
+    })
+
   return (
     <div>
-      {/* Hero */}
+      {/* ── Hero ─────────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden mb-6"
            style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 60%, #1a4a7a 100%)' }}>
         <div className="px-8 py-7">
@@ -149,19 +163,17 @@ export default function BookingsPage() {
               <p className="text-blue-200 text-sm">
                 {isAdmin
                   ? 'Review and manage all campus resource booking requests'
-                  : 'Track and manage your resource reservations'
-                }
+                  : 'Track and manage your resource reservations'}
               </p>
             </div>
-            {!isAdmin && (
-              <Link
-                to="/bookings/new"
-                className="flex items-center gap-2 bg-white/15 hover:bg-white/25
-                           border border-white/30 text-white text-sm font-medium
-                           px-4 py-2.5 rounded-xl transition-colors">
-                + New Booking
-              </Link>
-            )}
+            {/* Both admin and user can make a new booking */}
+            <Link
+              to="/bookings/new"
+              className="flex items-center gap-2 bg-white/15 hover:bg-white/25
+                         border border-white/30 text-white text-sm font-medium
+                         px-4 py-2.5 rounded-xl transition-colors">
+              + New Booking
+            </Link>
           </div>
 
           {/* Stats */}
@@ -181,7 +193,19 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* ── Search (admin only) ───────────────────────── */}
+      {isAdmin && (
+        <div className="mb-4">
+          <input
+            className="input w-full max-w-sm"
+            placeholder="Search by name, resource or purpose..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* ── Tabs ──────────────────────────────────────── */}
       <div className="flex gap-1 mb-5 bg-gray-100 rounded-xl p-1 w-fit">
         {TABS.map(t => (
           <button
@@ -198,7 +222,7 @@ export default function BookingsPage() {
               <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs
                 ${t === 'PENDING'  ? 'bg-amber-100 text-amber-700'  : ''}
                 ${t === 'APPROVED' ? 'bg-green-100 text-green-700'  : ''}
-                ${t === 'REJECTED' ? 'bg-red-100 text-red-700'      : ''}
+                ${t === 'REJECTED' ? 'bg-red-100   text-red-700'    : ''}
               `}>
                 {counts[t]}
               </span>
@@ -207,12 +231,11 @@ export default function BookingsPage() {
         ))}
       </div>
 
-      {/* Results count */}
       <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-4">
-        Showing {filtered.length} {tab === 'ALL' ? 'total' : tab.toLowerCase()} bookings
+        Showing {filtered.length} bookings
       </p>
 
-      {/* Booking list */}
+      {/* ── List ──────────────────────────────────────── */}
       {loading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
@@ -237,11 +260,9 @@ export default function BookingsPage() {
               : `No ${STATUS_CONFIG[tab]?.label.toLowerCase()} bookings.`
             }
           </p>
-          {!isAdmin && (
-            <Link to="/bookings/new" className="btn-primary inline-block">
-              Browse resources
-            </Link>
-          )}
+          <Link to="/bookings/new" className="btn-primary inline-block">
+            Make a booking
+          </Link>
         </div>
       ) : (
         <div className="space-y-3">
@@ -255,14 +276,13 @@ export default function BookingsPage() {
                 className="bg-white rounded-2xl border border-gray-100
                            hover:shadow-md transition-all duration-200">
 
-                {/* Status accent bar */}
+                {/* Status bar */}
                 <div className={`h-0.5 rounded-t-2xl ${
                   booking.status === 'APPROVED' ? 'bg-green-400' :
                   booking.status === 'REJECTED' ? 'bg-red-400'   : 'bg-amber-400'
                 }`} />
 
                 <div className="p-4">
-                  {/* Main row */}
                   <div className="flex items-start gap-4">
 
                     {/* Icon */}
@@ -304,7 +324,6 @@ export default function BookingsPage() {
                         </p>
                       )}
 
-                      {/* Rejection reason */}
                       {booking.status === 'REJECTED' && booking.adminNote && (
                         <p className="text-xs text-red-500 mt-0.5">
                           Reason: {booking.adminNote}
@@ -322,7 +341,7 @@ export default function BookingsPage() {
                         View
                       </Link>
 
-                      {/* Admin approve/reject buttons */}
+                      {/* Admin approve / reject */}
                       {isAdmin && booking.status === 'PENDING' && (
                         <>
                           <button
@@ -335,16 +354,18 @@ export default function BookingsPage() {
                             ✓ Approve
                           </button>
                           <button
-                            onClick={() => handleReject(booking.id)}
+                            onClick={() => handleRejectOpen(booking.id)}
+                            disabled={actioning}
                             className="text-xs px-3 py-1.5 rounded-lg bg-red-50
                                        text-red-600 border border-red-200
-                                       hover:bg-red-100 transition-colors font-medium">
+                                       hover:bg-red-100 transition-colors font-medium
+                                       disabled:opacity-50">
                             ✗ Reject
                           </button>
                         </>
                       )}
 
-                      {/* User cancel button — only for their own PENDING bookings */}
+                      {/* User cancel — only pending */}
                       {!isAdmin && booking.status === 'PENDING' && (
                         <button
                           onClick={() => handleCancel(booking.id)}
@@ -363,7 +384,7 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Reject modal */}
+      {/* ── Reject Modal ──────────────────────────────── */}
       {rejectId && (
         <div className="fixed inset-0 bg-black/40 flex items-center
                         justify-center z-50 p-4">
@@ -388,7 +409,7 @@ export default function BookingsPage() {
                 className="flex-1 py-2.5 text-sm font-medium rounded-xl
                            bg-red-600 text-white hover:bg-red-700
                            transition-colors disabled:opacity-50">
-                Confirm rejection
+                {actioning ? 'Rejecting...' : 'Confirm rejection'}
               </button>
               <button
                 onClick={() => { setRejectId(null); setRejectNote('') }}
