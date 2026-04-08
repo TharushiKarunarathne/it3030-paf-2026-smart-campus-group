@@ -11,6 +11,10 @@ import NotificationsPage  from './pages/notifications/NotificationsPage'
 import UserManagement     from './pages/admin/UserManagement'
 import ProfilePage from './pages/profile/ProfilePage'
 
+import TicketsPage      from './pages/tickets/TicketsPage'
+import NewTicketPage    from './pages/tickets/NewTicketPage'
+import TicketDetailPage from './pages/tickets/TicketDetailPage'
+
 // Member 1 — Facilities & Assets
 import ResourcesPage      from './pages/resources/ResourcesPage'
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
@@ -85,12 +89,10 @@ export default function App() {
                 <Route path="/bookings/:id"   element={<BookingDetailPage />} />
 
                 {/* Member 3 — Incident Ticketing */}
-                <Route path="/tickets"
-                  element={<Placeholder label="Member 3 — Tickets" />} />
-                <Route path="/tickets/new"
-                  element={<Placeholder label="Member 3 — New Ticket" />} />
-                <Route path="/tickets/:id"
-                  element={<Placeholder label="Member 3 — Ticket Detail" />} />
+                {/* Member 3 — Incident Ticketing */}
+                <Route path="/tickets"     element={<TicketsPage />} />
+                <Route path="/tickets/new" element={<NewTicketPage />} />
+                <Route path="/tickets/:id" element={<TicketDetailPage />} />
               </Route>
             </Route>
 

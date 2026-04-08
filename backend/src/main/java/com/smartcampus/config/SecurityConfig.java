@@ -38,24 +38,14 @@ public class SecurityConfig {
                 s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                // Static uploads (ticket images)
+                .requestMatchers("/uploads/**").permitAll()
 
-                // Resources — GET is public, everything else authenticated
-                .requestMatchers(HttpMethod.GET,    "/api/resources/**").permitAll()
-                .requestMatchers(HttpMethod.POST,   "/api/resources/**").authenticated()
-                .requestMatchers(HttpMethod.PUT,    "/api/resources/**").authenticated()
-                .requestMatchers(HttpMethod.PATCH,  "/api/resources/**").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/resources/**").authenticated()
-
-                // Bookings — all methods explicitly allowed for authenticated users
-                // role checks are handled manually inside BookingController
-                .requestMatchers(HttpMethod.GET,    "/api/bookings/**").authenticated()
-                .requestMatchers(HttpMethod.POST,   "/api/bookings/**").authenticated()
-                .requestMatchers(HttpMethod.PATCH,  "/api/bookings/**").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").authenticated()
-
-                // Users
-                .requestMatchers("/api/users/**").authenticated()
-
+                // Resources — read is public, write is admin only (handled by @PreAuthorize)
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/resources/**").permitAll()
+                
+                .requestMatchers("/api/users").hasRole("ADMIN")
+                .requestMatchers("/api/users/*/role").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter,
@@ -70,9 +60,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of("http://localhost:5173"));
 
         // ── PATCH and PUT added — was missing, caused 403 on approve/reject ──
-        config.setAllowedMethods(List.of(
-            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
