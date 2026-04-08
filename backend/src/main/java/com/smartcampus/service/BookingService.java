@@ -1,0 +1,177 @@
+package com.smartcampus.service;
+
+import com.smartcampus.model.Booking;
+import com.smartcampus.model.Resource;
+import com.smartcampus.model.User;
+import com.smartcampus.repository.BookingRepository;
+import com.smartcampus.repository.ResourceRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class BookingService {
+
+    private final BookingRepository bookingRepository;
+    private final ResourceRepository resourceRepository;
+
+    public BookingService(BookingRepository bookingRepository,
+                          ResourceRepository resourceRepository) {
+        this.bookingRepository  = bookingRepository;
+        this.resourceRepository = resourceRepository;
+    }
+
+    public List<Booking> getMyBookings(String userId) {
+        return bookingRepository.findByUserId(userId);
+    }
+
+    public List<Booking> getAllBookings() {
+        return bookingRepository.findAll();
+    }
+
+    public Booking getBookingById(String id) {
+        return bookingRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+    }
+
+    public List<Booking> getBookingsByResource(String resourceId) {
+        return bookingRepository.findByResourceIdOrderByStartTimeAsc(resourceId);
+    }
+
+    public Booking createBooking(Map<String, Object> body, User user) {
+
+        String resourceId = (String) body.get("resourceId");
+        String startStr   = (String) body.get("startTime");
+        String endStr     = (String) body.get("endTime");
+        String purpose    = (String) body.get("purpose");
+
+        if (resourceId == null || resourceId.isBlank())
+            throw new RuntimeException("Resource ID is required");
+        if (startStr == null || endStr == null)
+            throw new RuntimeException("Start and end time are required");
+        if (purpose == null || purpose.isBlank())
+            throw new RuntimeException("Purpose is required");
+
+        LocalDateTime startTime = LocalDateTime.parse(startStr.replace("Z", ""));
+        LocalDateTime endTime   = LocalDateTime.parse(endStr.replace("Z", ""));
+
+        if (!endTime.isAfter(startTime))
+            throw new RuntimeException("End time must be after start time");
+
+        if (startTime.isBefore(LocalDateTime.now()))
+            throw new RuntimeException("Cannot book a time slot in the past");
+
+        long minutes = java.time.Duration.between(startTime, endTime).toMinutes();
+        if (minutes < 30)
+            throw new RuntimeException("Minimum booking duration is 30 minutes");
+        if (minutes > 480)
+            throw new RuntimeException("Maximum booking duration is 8 hours");
+
+        Resource resource = resourceRepository.findById(resourceId)
+            .orElseThrow(() -> new RuntimeException("Resource not found"));
+
+        if (resource.getStatus() != Resource.ResourceStatus.AVAILABLE)
+            throw new RuntimeException(
+                "Resource is not available for booking (status: "
+                + resource.getStatus() + ")"
+            );
+
+        List<Booking> conflicts = bookingRepository.findConflictingBookings(
+            resourceId, startTime, endTime
+        );
+        if (!conflicts.isEmpty()) {
+            Booking conflict = conflicts.get(0);
+            throw new RuntimeException(
+                "Time slot is already booked from " +
+                conflict.getStartTime() + " to " + conflict.getEndTime()
+            );
+        }
+
+        Booking booking = new Booking();
+        booking.setResourceId(resourceId);
+        booking.setResourceName(resource.getName());
+        booking.setResourceType(resource.getType() != null
+            ? resource.getType().name() : null);
+        booking.setUserId(user.getId());
+        booking.setUserName(user.getName());
+        booking.setUserEmail(user.getEmail());
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
+        booking.setPurpose(purpose);
+        booking.setStatus(Booking.BookingStatus.PENDING);
+
+        return bookingRepository.save(booking);
+    }
+
+    public Booking updateStatus(String id, String status, String adminNote, User admin) {
+        Booking booking = getBookingById(id);
+
+        Booking.BookingStatus newStatus;
+        try {
+            newStatus = Booking.BookingStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + status);
+        }
+
+        // ── Revert to PENDING — always allowed for admin ──────
+        if (newStatus == Booking.BookingStatus.PENDING) {
+            booking.setStatus(Booking.BookingStatus.PENDING);
+            booking.setAdminNote(null);
+            return bookingRepository.save(booking);
+        }
+
+        // ── Normal flow — booking must currently be PENDING ───
+        if (booking.getStatus() != Booking.BookingStatus.PENDING) {
+            throw new RuntimeException(
+                "This booking is already " + booking.getStatus() +
+                ". Use the Revert button first."
+            );
+        }
+
+        // Rejection must have a reason
+        if (newStatus == Booking.BookingStatus.REJECTED &&
+            (adminNote == null || adminNote.isBlank())) {
+            throw new RuntimeException("Please provide a reason for rejection");
+        }
+
+        // Re-check conflicts before approving
+        if (newStatus == Booking.BookingStatus.APPROVED) {
+            List<Booking> conflicts = bookingRepository.findConflictingBookings(
+                booking.getResourceId(),
+                booking.getStartTime(),
+                booking.getEndTime()
+            );
+            conflicts.removeIf(c -> c.getId().equals(id));
+            if (!conflicts.isEmpty()) {
+                throw new RuntimeException(
+                    "Cannot approve — time slot conflicts with another approved booking"
+                );
+            }
+        }
+
+        booking.setStatus(newStatus);
+        if (adminNote != null && !adminNote.isBlank()) {
+            booking.setAdminNote(adminNote);
+        }
+
+        return bookingRepository.save(booking);
+    }
+
+    public void deleteBooking(String id, User requestingUser) {
+        Booking booking = getBookingById(id);
+
+        boolean isAdmin = requestingUser.getRole() != null &&
+                          requestingUser.getRole().name().equals("ADMIN");
+        boolean isOwner = booking.getUserId().equals(requestingUser.getId());
+
+        if (!isAdmin && !isOwner)
+            throw new RuntimeException("You are not allowed to cancel this booking");
+
+        if (!isAdmin && booking.getStatus() == Booking.BookingStatus.APPROVED)
+            throw new RuntimeException("Cannot cancel an already approved booking");
+
+        bookingRepository.deleteById(id);
+    }
+}
