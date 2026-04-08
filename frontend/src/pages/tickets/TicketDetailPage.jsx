@@ -6,6 +6,8 @@ import {
   assignTechnician,
   addComment,
   deleteComment,
+  resolveTicket,
+  deleteTicket,
 } from '../../api/ticketApi'
 import { getAllUsers } from '../../api/authApi'
 import { useAuth } from '../../hooks/useAuth'
@@ -24,11 +26,10 @@ const PRIORITY_STYLES = {
   HIGH:   { bg: 'bg-red-100',    text: 'text-red-700',    label: 'High' },
 }
 
-// What status transitions are allowed
 const STATUS_TRANSITIONS = {
   OPEN:        ['IN_PROGRESS', 'CLOSED'],
-  IN_PROGRESS: ['RESOLVED', 'OPEN'],
-  RESOLVED:    ['CLOSED', 'OPEN'],
+  IN_PROGRESS: ['CLOSED'],
+  RESOLVED:    ['CLOSED'],
   CLOSED:      ['OPEN'],
 }
 
@@ -52,20 +53,83 @@ function timeAgo(dateStr) {
   return `${days}d ago`
 }
 
+// ─── Resolution Modal ────────────────────────────────────────────────────────
+function ResolutionModal({ onConfirm, onCancel, loading }) {
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = () => {
+    if (!note.trim()) {
+      setError('Please describe how the issue was resolved.')
+      return
+    }
+    onConfirm(note.trim())
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-3xl">✅</span>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Resolve Ticket</h2>
+            <p className="text-xs text-gray-500">
+              Describe what was done to fix this issue.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Resolution Note <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            className="input resize-none"
+            rows={4}
+            placeholder="e.g. Replaced the faulty capacitor in the AC unit. Unit is now functioning normally."
+            value={note}
+            onChange={(e) => { setNote(e.target.value); setError('') }}
+            autoFocus
+          />
+          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="btn-primary flex-1"
+          >
+            {loading ? 'Resolving...' : 'Mark as Resolved'}
+          </button>
+          <button onClick={onCancel} className="btn-secondary">
+            Cancel
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function TicketDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, isAdmin, isTechnician } = useAuth()
   const isUser = !isAdmin && !isTechnician
 
-  const [ticket, setTicket]                 = useState(null)
-  const [technicians, setTechnicians]       = useState([])
-  const [loading, setLoading]               = useState(true)
-  const [comment, setComment]               = useState('')
-  const [submitting, setSubmitting]         = useState(false)
-  const [statusLoading, setStatusLoading]   = useState(false)
-  const [assignLoading, setAssignLoading]   = useState(false)
-  const [imageExpanded, setImageExpanded]   = useState(false)
+  const [ticket, setTicket]               = useState(null)
+  const [technicians, setTechnicians]     = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [comment, setComment]             = useState('')
+  const [submitting, setSubmitting]       = useState(false)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [assignLoading, setAssignLoading] = useState(false)
+  const [resolveLoading, setResolveLoading] = useState(false)
+  const [imageExpanded, setImageExpanded] = useState(false)
+  const [showResolveModal, setShowResolveModal] = useState(false)
 
   useEffect(() => {
     fetchTicket()
@@ -89,14 +153,17 @@ export default function TicketDetailPage() {
     try {
       const { data } = await getAllUsers()
       setTechnicians(
-        Array.isArray(data)
-          ? data.filter(u => u.role === 'TECHNICIAN')
-          : []
+        Array.isArray(data) ? data.filter(u => u.role === 'TECHNICIAN') : []
       )
     } catch {}
   }
 
   const handleStatusChange = async (newStatus) => {
+    // Intercept RESOLVED — show modal instead
+    if (newStatus === 'RESOLVED') {
+      setShowResolveModal(true)
+      return
+    }
     try {
       setStatusLoading(true)
       const { data } = await updateTicketStatus(id, newStatus)
@@ -106,6 +173,20 @@ export default function TicketDetailPage() {
       toast.error('Failed to update status.')
     } finally {
       setStatusLoading(false)
+    }
+  }
+
+  const handleResolve = async (note) => {
+    try {
+      setResolveLoading(true)
+      const { data } = await resolveTicket(id, note)
+      setTicket(data)
+      setShowResolveModal(false)
+      toast.success('Ticket marked as resolved!')
+    } catch {
+      toast.error('Failed to resolve ticket.')
+    } finally {
+      setResolveLoading(false)
     }
   }
 
@@ -147,6 +228,17 @@ export default function TicketDetailPage() {
     }
   }
 
+  const handleDeleteTicket = async () => {
+    if (!window.confirm('Are you sure you want to delete this ticket?')) return
+    try {
+      await deleteTicket(ticket.id)
+      toast.success('Ticket deleted.')
+      navigate('/tickets')
+    } catch {
+      toast.error('Failed to delete ticket.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -160,11 +252,19 @@ export default function TicketDetailPage() {
   const s = STATUS_STYLES[ticket.status]     ?? STATUS_STYLES.OPEN
   const p = PRIORITY_STYLES[ticket.priority] ?? PRIORITY_STYLES.MEDIUM
   const isOwner    = ticket.reportedById === user?.id
-  const canManage  = isAdmin || isTechnician  // can change status
   const isAssigned = ticket.assignedToId === user?.id
 
   return (
     <div className="max-w-3xl mx-auto">
+
+      {/* Resolution modal */}
+      {showResolveModal && (
+        <ResolutionModal
+          onConfirm={handleResolve}
+          onCancel={() => setShowResolveModal(false)}
+          loading={resolveLoading}
+        />
+      )}
 
       <button
         onClick={() => navigate('/tickets')}
@@ -173,7 +273,7 @@ export default function TicketDetailPage() {
         ← Back to tickets
       </button>
 
-      {/* Ticket header */}
+      {/* Header */}
       <div className="card mb-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
@@ -183,7 +283,6 @@ export default function TicketDetailPage() {
               {ticket.category && (
                 <span className="badge bg-gray-100 text-gray-600">{ticket.category}</span>
               )}
-              {/* Show technician their assignment status */}
               {isTechnician && isAssigned && (
                 <span className="badge bg-blue-100 text-blue-700">📌 Assigned to you</span>
               )}
@@ -226,9 +325,10 @@ export default function TicketDetailPage() {
 
       <div className="grid md:grid-cols-3 gap-4">
 
-        {/* Left — description + image + comments */}
+        {/* Left column */}
         <div className="md:col-span-2 space-y-4">
 
+          {/* Description */}
           <div className="card">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">Description</h2>
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
@@ -236,6 +336,25 @@ export default function TicketDetailPage() {
             </p>
           </div>
 
+          {/* Resolution note — shown when resolved */}
+          {ticket.resolutionNote && (
+            <div className="card border-green-200 bg-green-50/40">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">✅</span>
+                <h2 className="text-sm font-semibold text-green-800">Resolution Note</h2>
+              </div>
+              <p className="text-sm text-green-900 leading-relaxed whitespace-pre-wrap">
+                {ticket.resolutionNote}
+              </p>
+              {ticket.assignedToName && (
+                <p className="text-xs text-green-600 mt-2">
+                  Resolved by {ticket.assignedToName}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Image */}
           {ticket.imageUrl && (
             <div className="card">
               <h2 className="text-sm font-semibold text-gray-900 mb-3">Attachment</h2>
@@ -278,9 +397,7 @@ export default function TicketDetailPage() {
 
             <div className="space-y-3 mb-4">
               {(!ticket.comments || ticket.comments.length === 0) ? (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  No comments yet.
-                </p>
+                <p className="text-sm text-gray-400 text-center py-4">No comments yet.</p>
               ) : (
                 ticket.comments.map((c) => (
                   <div key={c.id} className="flex gap-3 items-start group">
@@ -291,10 +408,9 @@ export default function TicketDetailPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-medium text-gray-900">{c.authorName}</span>
                           <span className="text-xs text-gray-400">{timeAgo(c.createdAt)}</span>
-                          {/* Show role badge on comments */}
                           {c.authorRole && (
                             <span className={`badge text-[10px]
                               ${c.authorRole === 'ADMIN'      ? 'bg-purple-100 text-purple-700' :
@@ -314,9 +430,7 @@ export default function TicketDetailPage() {
                           </button>
                         )}
                       </div>
-                      <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">
-                        {c.content}
-                      </p>
+                      <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">{c.content}</p>
                     </div>
                   </div>
                 ))
@@ -348,21 +462,33 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
-        {/* Right — role-based management panel */}
+        {/* Right column — role-based panel */}
         <div className="space-y-4">
 
-          {/* USER — read only panel */}
+          {/* USER — read only */}
           {isUser && (
             <div className="card text-center py-6">
-              <p className="text-3xl mb-2">📋</p>
-              <p className="text-sm font-medium text-gray-700">Your Ticket</p>
+              <p className="text-3xl mb-2">
+                {ticket.status === 'RESOLVED' ? '✅' :
+                 ticket.status === 'CLOSED'   ? '🔒' : '📋'}
+              </p>
+              <p className="text-sm font-medium text-gray-700">
+                {ticket.status === 'RESOLVED' ? 'Issue Resolved' :
+                 ticket.status === 'CLOSED'   ? 'Ticket Closed' : 'Your Ticket'}
+              </p>
               <p className="text-xs text-gray-400 mt-1">
-                A technician will be assigned to resolve this issue.
+                {ticket.status === 'OPEN'
+                  ? 'A technician will be assigned to resolve this issue.'
+                  : ticket.status === 'IN_PROGRESS'
+                  ? 'A technician is working on this.'
+                  : ticket.status === 'RESOLVED'
+                  ? 'Check the resolution note below.'
+                  : 'This ticket has been closed.'}
               </p>
             </div>
           )}
 
-          {/* TECHNICIAN — can update status only */}
+          {/* TECHNICIAN — status updates + resolve */}
           {isTechnician && (
             <div className="card">
               <h2 className="text-sm font-semibold text-gray-900 mb-1">Update Status</h2>
@@ -370,7 +496,21 @@ export default function TicketDetailPage() {
                 Move this ticket along as you work on it.
               </p>
               <div className="space-y-2">
+                {/* Resolve button — special, opens modal */}
+                {ticket.status === 'IN_PROGRESS' && (
+                  <button
+                    onClick={() => setShowResolveModal(true)}
+                    disabled={resolveLoading}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium
+                               bg-green-100 text-green-700 hover:opacity-80
+                               transition-colors disabled:opacity-50"
+                  >
+                    ✅ Mark as Resolved
+                  </button>
+                )}
+                {/* Other transitions */}
                 {(STATUS_TRANSITIONS[ticket.status] ?? []).map((nextStatus) => {
+                  if (nextStatus === 'RESOLVED') return null  // handled above
                   const ns = STATUS_STYLES[nextStatus]
                   return (
                     <button
@@ -389,14 +529,28 @@ export default function TicketDetailPage() {
             </div>
           )}
 
-          {/* ADMIN — can update status AND assign technician */}
+          {/* ADMIN — status + resolve + assign */}
           {isAdmin && (
             <>
               <div className="card">
                 <h2 className="text-sm font-semibold text-gray-900 mb-1">Update Status</h2>
                 <p className="text-xs text-gray-400 mb-3">Change the ticket status.</p>
                 <div className="space-y-2">
+                  {/* Resolve button */}
+                  {(ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS') && (
+                    <button
+                      onClick={() => setShowResolveModal(true)}
+                      disabled={resolveLoading}
+                      className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium
+                                 bg-green-100 text-green-700 hover:opacity-80
+                                 transition-colors disabled:opacity-50"
+                    >
+                      ✅ Mark as Resolved
+                    </button>
+                  )}
+                  {/* Other transitions */}
                   {(STATUS_TRANSITIONS[ticket.status] ?? []).map((nextStatus) => {
+                    if (nextStatus === 'RESOLVED') return null
                     const ns = STATUS_STYLES[nextStatus]
                     return (
                       <button
@@ -415,7 +569,9 @@ export default function TicketDetailPage() {
               </div>
 
               <div className="card">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">Assign Technician</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-1">
+                  Assign Technician
+                </h2>
                 <p className="text-xs text-gray-400 mb-3">
                   Assign a technician to handle this ticket.
                 </p>
@@ -462,14 +618,10 @@ export default function TicketDetailPage() {
             </div>
           </div>
 
-          {/* Delete — only ticket owner when status is OPEN */}
+          {/* Delete — owner only when OPEN */}
           {isOwner && ticket.status === 'OPEN' && (
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to delete this ticket?')) {
-                  toast.error('Delete not yet connected to backend.')
-                }
-              }}
+              onClick={handleDeleteTicket}
               className="btn-danger w-full text-sm"
             >
               Delete Ticket
