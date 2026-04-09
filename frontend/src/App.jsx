@@ -10,6 +10,7 @@ import DashboardPage      from './pages/dashboard/DashboardPage'
 import NotificationsPage  from './pages/notifications/NotificationsPage'
 import UserManagement     from './pages/admin/UserManagement.jsx'
 import ProfilePage from './pages/profile/ProfilePage'
+import HomePage    from './pages/home/HomePage'
 
 import TicketsPage      from './pages/tickets/TicketsPage'
 import NewTicketPage    from './pages/tickets/NewTicketPage'
@@ -62,16 +63,16 @@ export default function App() {
           <Routes>
 
             {/* ── Public routes — no login needed ─────── */}
-            <Route path="/login"        element={<LoginPage />} />
+            <Route path="/"            element={<HomePage />} />
+            <Route path="/login"       element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
             {/* QR verification — public, anyone can scan */}
-            <Route path="/verify/:id"   element={<VerifyBookingPage />} />
+            <Route path="/verify/:id"  element={<VerifyBookingPage />} />
 
             {/* ── All authenticated users ──────────────── */}
             <Route element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
 
                 {/* Member 4 — Auth, Roles & Notifications */}
                 <Route path="/dashboard"     element={<DashboardPage />} />
@@ -104,7 +105,7 @@ export default function App() {
             </Route>
 
             {/* Catch all */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
 
           </Routes>
         </NotificationProvider>
