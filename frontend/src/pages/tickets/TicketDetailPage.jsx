@@ -41,6 +41,14 @@ function formatDate(dateStr) {
   })
 }
 
+function formatDuration(minutes) {
+  if (minutes == null) return null
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 function timeAgo(dateStr) {
   if (!dateStr) return ''
   const diff  = Date.now() - new Date(dateStr).getTime()
@@ -615,6 +623,33 @@ export default function TicketDetailPage() {
             <div className="flex justify-between">
               <span>Comments</span>
               <span className="font-medium text-gray-700">{ticket.comments?.length ?? 0}</span>
+            </div>
+          </div>
+
+          {/* SLA Timers — all roles */}
+          <div className="card text-xs text-gray-500 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">Response Times</h2>
+            <div className="flex justify-between items-center">
+              <span>First Response</span>
+              {ticket.timeToFirstResponseMinutes != null
+                ? <span className="font-medium text-blue-700">
+                    ⚡ {formatDuration(ticket.timeToFirstResponseMinutes)}
+                  </span>
+                : <span className="text-orange-400 italic">Awaiting...</span>
+              }
+            </div>
+            <div className="flex justify-between items-center">
+              <span>Resolution</span>
+              {ticket.timeToResolutionMinutes != null
+                ? <span className="font-medium text-green-700">
+                    ✅ {formatDuration(ticket.timeToResolutionMinutes)}
+                  </span>
+                : <span className="text-gray-400 italic">
+                    {ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
+                      ? '—'
+                      : 'In progress...'}
+                  </span>
+              }
             </div>
           </div>
 
