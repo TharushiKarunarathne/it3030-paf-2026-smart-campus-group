@@ -20,6 +20,14 @@ const PRIORITY_STYLES = {
 const CATEGORIES = ['All', 'Lecture Halls', 'Computer Labs', 'Vehicles', 'Sports', 'Meeting Rooms', 'Library']
 const STATUSES   = ['All', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
 
+function formatDuration(minutes) {
+  if (minutes == null) return null
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 function timeAgo(dateStr) {
   if (!dateStr) return ''
   const diff  = Date.now() - new Date(dateStr).getTime()
@@ -237,6 +245,19 @@ export default function TicketsPage() {
 
                     {ticket.commentCount > 0 && (
                       <span>💬 {ticket.commentCount}</span>
+                    )}
+
+                    {/* SLA: awaiting first response */}
+                    {ticket.timeToFirstResponseMinutes == null &&
+                     ticket.status === 'OPEN' && (
+                      <span className="text-orange-500">⏳ No response yet</span>
+                    )}
+
+                    {/* SLA: resolved time */}
+                    {ticket.timeToResolutionMinutes != null && (
+                      <span className="text-green-600">
+                        ✅ Resolved in {formatDuration(ticket.timeToResolutionMinutes)}
+                      </span>
                     )}
                   </div>
                 </div>
