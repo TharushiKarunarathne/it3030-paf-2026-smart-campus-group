@@ -105,6 +105,13 @@ export default function Navbar() {
 
                   {/* Menu items */}
                   <div className="py-1">
+                    <Link 
+                      to="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      My Profile
+                    </Link>
                     <Link
                       to="/notifications"
                       onClick={() => setMenuOpen(false)}

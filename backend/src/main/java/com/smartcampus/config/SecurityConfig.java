@@ -3,7 +3,7 @@ package com.smartcampus.config;
 import com.smartcampus.security.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,7 +20,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+// ── REMOVED @EnableMethodSecurity — was interfering with manual role checks ──
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
@@ -38,6 +38,8 @@ public class SecurityConfig {
                 s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                // Static uploads (ticket images)
+                .requestMatchers("/uploads/**").permitAll()
 
                 // Resources — read is public, write is admin only (handled by @PreAuthorize)
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/resources/**").permitAll()
@@ -56,7 +58,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // ── PATCH and PUT added — was missing, caused 403 on approve/reject ──
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
