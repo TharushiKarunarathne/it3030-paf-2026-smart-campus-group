@@ -18,13 +18,16 @@ import TicketDetailPage from './pages/tickets/TicketDetailPage'
 // Member 1 — Facilities & Assets
 import ResourcesPage      from './pages/resources/ResourcesPage'
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
-import NewResourcePage  from './pages/resources/NewResourcePage'
-import EditResourcePage from './pages/resources/EditResourcePage'
+import NewResourcePage    from './pages/resources/NewResourcePage'
+import EditResourcePage   from './pages/resources/EditResourcePage'
 
 // Member 2 — Booking Management
 import BookingsPage      from './pages/bookings/BookingsPage'
 import NewBookingPage    from './pages/bookings/NewBookingPage'
 import BookingDetailPage from './pages/bookings/BookingDetailPage'
+
+// Member 2 — QR verification (public, no login needed)
+import VerifyBookingPage from './pages/bookings/VerifyBookingPage'
 
 // Placeholder pages for teammates
 const Placeholder = ({ label }) => (
@@ -58,11 +61,14 @@ export default function App() {
         <NotificationProvider>
           <Routes>
 
-            {/* Public routes */}
+            {/* ── Public routes — no login needed ─────── */}
             <Route path="/login"        element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-            {/* All authenticated users */}
+            {/* QR verification — public, anyone can scan */}
+            <Route path="/verify/:id"   element={<VerifyBookingPage />} />
+
+            {/* ── All authenticated users ──────────────── */}
             <Route element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
@@ -72,21 +78,14 @@ export default function App() {
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
 
-                <Route path="/resources"     element={<ResourcesPage />} />
-                <Route path="/resources/:id" element={<ResourceDetailPage />} />
-
                 {/* Member 1 — Facilities & Assets */}
-                <Route path="/resources"
-                  element={<Placeholder label="Member 1 — Resources" />} />
-                <Route path="/resources/:id"
-                  element={<Placeholder label="Member 1 — Resource Detail" />} />
-                <Route path="/resources/new"      element={<NewResourcePage />} />
-<Route path="/resources/:id/edit" element={<EditResourcePage />} />
+                <Route path="/resources"          element={<ResourcesPage />} />
+                <Route path="/resources/:id"      element={<ResourceDetailPage />} />
 
-                {/* Member 2 — Bookings (all logged-in users) */}
-                <Route path="/bookings"       element={<BookingsPage />} />
-                <Route path="/bookings/new"   element={<NewBookingPage />} />
-                <Route path="/bookings/:id"   element={<BookingDetailPage />} />
+                {/* Member 2 — Booking Management */}
+                <Route path="/bookings"           element={<BookingsPage />} />
+                <Route path="/bookings/new"       element={<NewBookingPage />} />
+                <Route path="/bookings/:id"       element={<BookingDetailPage />} />
 
                 {/* Member 3 — Incident Ticketing */}
                 {/* Member 3 — Incident Ticketing */}
@@ -96,15 +95,12 @@ export default function App() {
               </Route>
             </Route>
 
-            {/* Admin only */}
+            {/* ── Admin only ───────────────────────────── */}
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
               <Route element={<MainLayout />}>
-              {/* Admin-only pages resources */}
                 <Route path="/resources/new"      element={<NewResourcePage />} />
                 <Route path="/resources/:id/edit" element={<EditResourcePage />} />
-
-
-                <Route path="/admin/users" element={<UserManagement />} />
+                <Route path="/admin/users"        element={<UserManagement />} />
               </Route>
             </Route>
 
