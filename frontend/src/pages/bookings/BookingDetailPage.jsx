@@ -21,11 +21,32 @@ const TYPE_CONFIG = {
   LIBRARY_STUDY_ROOM: { icon: '📚', label: 'Library Study Room', bg: '#f0fdfa' },
 }
 
+function Spinner() {
+  return (
+    <svg
+      className="w-5 h-5"
+      style={{ animation: 'spin 0.8s linear infinite' }}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  )
+}
+
 function Modal({ open, onClose, children }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+      style={{ backdropFilter: 'blur(4px)' }}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
@@ -68,45 +89,16 @@ function calcDuration(start, end) {
   return m ? `${h}h ${m}m` : `${h} hour${h > 1 ? 's' : ''}`
 }
 
-/* ── Back button ────────────────────────────────────────────────────────── */
-function BackButton({ to, label }) {
-  const navigate = useNavigate()
-  return (
-    <button
-      onClick={() => to ? navigate(to) : navigate(-1)}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200
-                 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900
-                 shadow-sm transition-all mb-6"
-    >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-      </svg>
-      {label}
-    </button>
-  )
-}
-
-/* ── Perforated divider ─────────────────────────────────────────────────── */
-function Perforation() {
-  return (
-    <div className="relative flex items-center my-0 overflow-visible">
-      <div className="absolute -left-5 w-9 h-9 rounded-full bg-gray-100 z-10 border border-gray-200" />
-      <div className="flex-1 border-t-2 border-dashed border-gray-200 mx-4" />
-      <div className="absolute -right-5 w-9 h-9 rounded-full bg-gray-100 z-10 border border-gray-200" />
-    </div>
-  )
-}
-
 export default function BookingDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAdmin, user } = useAuth()
-  const [booking, setBooking]               = useState(null)
-  const [loading, setLoading]               = useState(true)
-  const [adminNote, setAdminNote]           = useState('')
+  const [booking, setBooking] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [adminNote, setAdminNote] = useState('')
   const [showRejectInput, setShowRejectInput] = useState(false)
-  const [actioning, setActioning]           = useState(false)
-  const [deleteModal, setDeleteModal]       = useState(false)
+  const [actioning, setActioning] = useState(false)
+  const [deleteModal, setDeleteModal] = useState(false)
 
   const verifyUrl = `${window.location.origin}/verify/${id}`
 
@@ -126,285 +118,356 @@ export default function BookingDetailPage() {
   }, [id])
 
   const handleApprove = async () => {
-    try { setActioning(true); const { data } = await updateBookingStatus(id, 'APPROVED', ''); setBooking(data); toast.success('Booking approved!') }
-    catch (err) { toast.error(err.response?.data?.error || 'Failed to approve.') }
-    finally { setActioning(false) }
+    try {
+      setActioning(true)
+      const { data } = await updateBookingStatus(id, 'APPROVED', '')
+      setBooking(data)
+      toast.success('Booking approved!')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to approve.')
+    } finally {
+      setActioning(false)
+    }
   }
+
   const handleReject = async () => {
-    if (!adminNote.trim()) { toast.error('Please enter a reason.'); return }
-    try { setActioning(true); const { data } = await updateBookingStatus(id, 'REJECTED', adminNote); setBooking(data); setShowRejectInput(false); toast.success('Booking rejected.') }
-    catch (err) { toast.error(err.response?.data?.error || 'Failed to reject.') }
-    finally { setActioning(false) }
+    if (!adminNote.trim()) {
+      toast.error('Please enter a reason.')
+      return
+    }
+    try {
+      setActioning(true)
+      const { data } = await updateBookingStatus(id, 'REJECTED', adminNote)
+      setBooking(data)
+      setShowRejectInput(false)
+      toast.success('Booking rejected.')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reject.')
+    } finally {
+      setActioning(false)
+    }
   }
+
   const handleRevert = async () => {
-    try { setActioning(true); const { data } = await updateBookingStatus(id, 'PENDING', ''); setBooking(data); toast.success('Reverted to Pending.') }
-    catch (err) { toast.error(err.response?.data?.error || 'Failed to revert.') }
-    finally { setActioning(false) }
+    try {
+      setActioning(true)
+      const { data } = await updateBookingStatus(id, 'PENDING', '')
+      setBooking(data)
+      toast.success('Reverted to Pending.')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to revert.')
+    } finally {
+      setActioning(false)
+    }
   }
+
   const handleDeleteConfirm = async () => {
-    try { setActioning(true); await deleteBooking(id); toast.success('Booking deleted.'); navigate('/bookings') }
-    catch (err) { toast.error(err.response?.data?.error || 'Failed to delete.') }
-    finally { setActioning(false); setDeleteModal(false) }
+    try {
+      setActioning(true)
+      await deleteBooking(id)
+      toast.success('Booking deleted.')
+      navigate('/bookings')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete.')
+    } finally {
+      setActioning(false)
+      setDeleteModal(false)
+    }
   }
+
   const handleCancel = async () => {
     if (!window.confirm('Cancel this booking?')) return
-    try { await deleteBooking(id); toast.success('Booking cancelled.'); navigate('/bookings') }
-    catch { toast.error('Failed to cancel.') }
+    try {
+      await deleteBooking(id)
+      toast.success('Booking cancelled.')
+      navigate('/bookings')
+    } catch {
+      toast.error('Failed to cancel.')
+    }
   }
 
   if (loading) return (
-    <div className="flex justify-center py-20">
-      <div className="w-10 h-10 border-[3px] border-indigo-600 border-t-transparent rounded-full animate-spin" />
+    <div className="max-w-2xl mx-auto page-fade-in">
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="px-8 py-14 flex flex-col items-center justify-center">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-4"
+            style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d5a8e)' }}
+          >
+            <Spinner />
+          </div>
+          <p className="text-sm font-medium text-gray-600">Loading booking details...</p>
+        </div>
+      </div>
     </div>
   )
+
   if (!booking) return null
 
-  const sc      = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.PENDING
-  const tc      = TYPE_CONFIG[booking.resourceType] ?? { icon: '📦', label: booking.resourceType, bg: '#f9fafb' }
+  const sc = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.PENDING
+  const tc = TYPE_CONFIG[booking.resourceType] ?? { icon: '📦', label: booking.resourceType, bg: '#f9fafb' }
   const isOwner = user?.id === booking.userId
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto page-fade-in">
+      <div
+        className="relative overflow-hidden rounded-2xl px-8 py-7 mb-6"
+        style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 60%, #1a4a7a 100%)' }}
+      >
+        <div
+          className="absolute top-0 right-0 w-48 h-48 rounded-full -translate-y-1/3 translate-x-1/4 opacity-10 pointer-events-none"
+          style={{ background: 'radial-gradient(circle, #60a5fa, transparent 70%)' }}
+        />
 
-      <BackButton to="/bookings" label="Back to Bookings" />
+        <div className="relative z-10">
+          <button
+            onClick={() => navigate('/bookings')}
+            className="flex items-center gap-1.5 text-blue-200 hover:text-white transition-colors text-sm mb-4"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Bookings
+          </button>
 
-      {/* ════════════════════════════════════
-          TICKET CARD
-      ════════════════════════════════════ */}
-      <div className="bg-white rounded-3xl overflow-visible shadow-xl border border-gray-100 mb-4">
-
-        {/* ── Ticket Header (colored strip) ── */}
-        <div className={`bg-gradient-to-r ${sc.strip} px-6 py-5 rounded-t-3xl`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 bg-white/20 backdrop-blur-sm">
-                {tc.icon}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+              >
+                <span className="text-white">{tc.icon}</span>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-white leading-tight">{booking.resourceName}</h1>
-                <p className="text-white/70 text-xs mt-0.5">{tc.label}</p>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-extrabold text-white truncate">{booking.resourceName}</h1>
+                <p className="text-blue-200 text-sm mt-0.5">{tc.label}</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                <span className="text-white font-bold text-sm">{sc.icon} {sc.label}</span>
-              </div>
-              <p className="text-white/50 text-[10px] mt-1">#{booking.id?.slice(-8).toUpperCase()}</p>
-            </div>
+
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${sc.badge} bg-white/95 whitespace-nowrap`}>
+              {sc.icon} {sc.label}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* ── Ticket Body ── */}
-        {booking.status === 'APPROVED' ? (
-          /* Two-column layout when QR is available */
-          <div className="flex">
-            {/* Left: details */}
-            <div className="flex-1 px-6 py-5 space-y-4">
-              <DetailRow icon="📅" label="Date"     value={fmtDate(booking.startTime)} />
-              <DetailRow icon="🕐" label="Time"     value={`${fmt24(booking.startTime)} – ${fmt24(booking.endTime)}`} />
-              <DetailRow icon="⏱"  label="Duration" value={calcDuration(booking.startTime, booking.endTime)} />
-              <DetailRow icon="👤" label="Booked by" value={booking.userName ?? booking.userEmail ?? 'You'} />
-              {booking.purpose && <DetailRow icon="📝" label="Purpose" value={booking.purpose} />}
-              {booking.checkedInAt && <DetailRow icon="✅" label="Checked in" value={fmtDateTime(booking.checkedInAt)} />}
-            </div>
-
-            {/* Vertical dashed divider */}
-            <div className="relative flex flex-col items-center py-4 mx-0">
-              <div className="absolute -top-3 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 z-10" />
-              <div className="flex-1 border-l-2 border-dashed border-gray-200 my-3" />
-              <div className="absolute -bottom-3 w-7 h-7 rounded-full bg-gray-100 border border-gray-200 z-10" />
-            </div>
-
-            {/* Right: QR code */}
-            <div className="flex flex-col items-center justify-center px-6 py-5 gap-3">
-              <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                <QRCodeSVG value={verifyUrl} size={110} bgColor="#ffffff" fgColor="#1e3a5f" level="M" />
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-5">
+        <div className="p-6">
+          {booking.status === 'APPROVED' ? (
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-start">
+              <div className="space-y-4">
+                <DetailRow icon="📅" label="Date" value={fmtDate(booking.startTime)} />
+                <DetailRow icon="🕐" label="Time" value={`${fmt24(booking.startTime)} – ${fmt24(booking.endTime)}`} />
+                <DetailRow icon="⏱" label="Duration" value={calcDuration(booking.startTime, booking.endTime)} />
+                <DetailRow icon="👤" label="Booked by" value={booking.userName ?? booking.userEmail ?? 'You'} />
+                {booking.purpose && <DetailRow icon="📝" label="Purpose" value={booking.purpose} />}
+                {booking.checkedInAt && <DetailRow icon="✅" label="Checked in" value={fmtDateTime(booking.checkedInAt)} />}
               </div>
-              <p className="text-[10px] text-gray-400 text-center leading-tight max-w-[110px]">
-                Scan at venue to check in
-              </p>
+
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 flex flex-col items-center justify-center">
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                  <QRCodeSVG value={verifyUrl} size={110} bgColor="#ffffff" fgColor="#1e3a5f" level="M" />
+                </div>
+                <p className="text-[11px] text-gray-400 text-center leading-tight mt-3 max-w-[110px]">
+                  Scan at venue to check in
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          /* Single column otherwise */
-          <div className="px-6 py-5">
-            <div className="grid grid-cols-2 gap-y-4 gap-x-6">
-              <DetailRow icon="📅" label="Date"      value={fmtDate(booking.startTime)} />
-              <DetailRow icon="🕐" label="Time"      value={`${fmt24(booking.startTime)} – ${fmt24(booking.endTime)}`} />
-              <DetailRow icon="⏱"  label="Duration"  value={calcDuration(booking.startTime, booking.endTime)} />
-              <DetailRow icon="👤" label="Booked by"  value={booking.userName ?? booking.userEmail ?? 'You'} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DetailRow icon="📅" label="Date" value={fmtDate(booking.startTime)} />
+              <DetailRow icon="🕐" label="Time" value={`${fmt24(booking.startTime)} – ${fmt24(booking.endTime)}`} />
+              <DetailRow icon="⏱" label="Duration" value={calcDuration(booking.startTime, booking.endTime)} />
+              <DetailRow icon="👤" label="Booked by" value={booking.userName ?? booking.userEmail ?? 'You'} />
               {booking.purpose && (
-                <div className="col-span-2">
+                <div className="md:col-span-2">
                   <DetailRow icon="📝" label="Purpose" value={booking.purpose} />
                 </div>
               )}
               {booking.checkedInAt && (
-                <div className="col-span-2">
+                <div className="md:col-span-2">
                   <DetailRow icon="✅" label="Checked in" value={fmtDateTime(booking.checkedInAt)} />
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Admin note / rejection */}
-        {booking.adminNote && (
-          <div className="mx-6 mb-4">
-            <div className={`rounded-xl px-4 py-3 border text-sm
-              ${booking.status === 'REJECTED'
-                ? 'bg-red-50 border-red-100 text-red-700'
-                : 'bg-emerald-50 border-emerald-100 text-emerald-700'}`}>
-              <p className="font-semibold text-xs uppercase tracking-wider mb-1 opacity-60">
-                {booking.status === 'REJECTED' ? 'Rejection reason' : 'Admin note'}
-              </p>
-              {booking.adminNote}
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <InfoCard label="Booking ID" value={`#${booking.id?.slice(-10).toUpperCase()}`} mono />
+            <InfoCard label="Submitted" value={fmtShortDate(booking.createdAt)} />
+          </div>
+
+          {booking.adminNote && (
+            <div className="mt-6">
+              <div
+                className={`rounded-xl px-4 py-3 border text-sm ${
+                  booking.status === 'REJECTED'
+                    ? 'bg-red-50 border-red-100 text-red-700'
+                    : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                }`}
+              >
+                <p className="font-semibold text-xs uppercase tracking-wider mb-1 opacity-70">
+                  {booking.status === 'REJECTED' ? 'Rejection reason' : 'Admin note'}
+                </p>
+                {booking.adminNote}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* User cancel */}
-        {isOwner && !isAdmin && booking.status === 'PENDING' && (
-          <div className="px-6 pb-5">
-            <button onClick={handleCancel}
-              className="w-full text-sm text-red-600 border border-red-100 bg-red-50
-                         rounded-xl py-2.5 hover:bg-red-100 transition-colors">
-              Cancel this booking
-            </button>
-          </div>
-        )}
-
-        {/* ── Perforated divider ── */}
-        <div className="px-2">
-          <Perforation />
-        </div>
-
-        {/* ── Ticket Stub ── */}
-        <div className="flex items-center justify-between px-6 py-4 rounded-b-3xl">
-          <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Booking ID</p>
-            <p className="text-xs font-mono font-bold text-gray-600 tracking-wider mt-0.5">
-              #{booking.id?.slice(-10).toUpperCase()}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex gap-0.5">
-              {Array.from({length: 14}).map((_, i) => (
-                <div key={i} className="w-1 bg-gray-200 rounded-full"
-                     style={{ height: `${8 + Math.sin(i) * 4}px` }} />
-              ))}
+          {isOwner && !isAdmin && booking.status === 'PENDING' && (
+            <div className="mt-6">
+              <button
+                onClick={handleCancel}
+                className="w-full text-sm text-red-600 border border-red-100 bg-red-50 rounded-xl py-2.5 hover:bg-red-100 transition-colors"
+              >
+                Cancel this booking
+              </button>
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Submitted</p>
-            <p className="text-xs font-medium text-gray-600 mt-0.5">{fmtShortDate(booking.createdAt)}</p>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* ── View resource link ── */}
-      <div className="text-center mb-4">
-        <Link to={`/resources/${booking.resourceId}`}
-          className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors font-medium">
+      <div className="text-center mb-5">
+        <Link
+          to={`/resources/${booking.resourceId}`}
+          className="text-sm text-blue-700 hover:text-blue-900 transition-colors font-medium"
+        >
           View resource details →
         </Link>
       </div>
 
-      {/* ── Admin Controls ── */}
       {isAdmin && (
-        <div className="rounded-2xl border border-orange-100 bg-orange-50/40 px-5 py-4 mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">⚙️ Admin Controls</h2>
-
-          {booking.status === 'PENDING' && !showRejectInput && (
-            <div className="flex gap-3">
-              <button onClick={handleApprove} disabled={actioning}
-                className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-emerald-600 text-white
-                           hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                ✓ Approve
-              </button>
-              <button onClick={() => setShowRejectInput(true)}
-                className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-red-50 text-red-600
-                           border border-red-200 hover:bg-red-100 transition-colors">
-                ✕ Reject
-              </button>
+        <div className="bg-white rounded-2xl border border-orange-100 overflow-hidden mb-5">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                <span className="text-lg">⚙️</span>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-800">Admin Controls</h2>
+                <p className="text-xs text-gray-500">Manage this booking</p>
+              </div>
             </div>
-          )}
 
-          {booking.status === 'PENDING' && showRejectInput && (
-            <div className="space-y-3">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                Reason <span className="text-red-400">*</span>
-              </label>
-              <textarea className="input resize-none" rows={2}
-                placeholder="e.g. Room reserved for faculty..."
-                value={adminNote} onChange={e => setAdminNote(e.target.value)} />
+            {booking.status === 'PENDING' && !showRejectInput && (
               <div className="flex gap-3">
-                <button onClick={handleReject} disabled={actioning}
-                  className="flex-1 py-2 text-sm font-medium rounded-xl bg-red-600 text-white
-                             hover:bg-red-700 transition-colors disabled:opacity-50">
-                  Confirm rejection
+                <button
+                  onClick={handleApprove}
+                  disabled={actioning}
+                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                >
+                  ✓ Approve
                 </button>
-                <button onClick={() => { setShowRejectInput(false); setAdminNote('') }}
-                  className="px-4 py-2 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200">
-                  Cancel
+                <button
+                  onClick={() => setShowRejectInput(true)}
+                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
+                >
+                  ✕ Reject
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {(booking.status === 'APPROVED' || booking.status === 'REJECTED') && (
-            <button onClick={handleRevert} disabled={actioning}
-              className="w-full py-2.5 text-sm font-medium rounded-xl bg-orange-50 text-orange-600
-                         border border-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50">
-              ↩ Revert to Pending
-            </button>
-          )}
-
-          {booking.status === 'CHECKED_IN' && (
-            <div className="space-y-3">
-              <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-center">
-                <p className="text-sm font-semibold text-blue-700">✅ Booking Completed</p>
-                <p className="text-xs text-blue-500 mt-0.5">Checked in and complete.</p>
+            {booking.status === 'PENDING' && showRejectInput && (
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  className="input resize-none"
+                  rows={2}
+                  placeholder="e.g. Room reserved for faculty..."
+                  value={adminNote}
+                  onChange={e => setAdminNote(e.target.value)}
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleReject}
+                    disabled={actioning}
+                    className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    Confirm rejection
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowRejectInput(false)
+                      setAdminNote('')
+                    }}
+                    className="px-4 py-2.5 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <button onClick={() => setDeleteModal(true)} disabled={actioning}
-                className="w-full py-2.5 text-sm font-medium rounded-xl bg-red-50 text-red-600
-                           border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50">
+            )}
+
+            {(booking.status === 'APPROVED' || booking.status === 'REJECTED') && (
+              <button
+                onClick={handleRevert}
+                disabled={actioning}
+                className="w-full py-2.5 text-sm font-semibold rounded-xl bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50"
+              >
+                ↩ Revert to Pending
+              </button>
+            )}
+
+            {booking.status === 'CHECKED_IN' && (
+              <div className="space-y-3">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-center">
+                  <p className="text-sm font-semibold text-blue-700">✅ Booking Completed</p>
+                  <p className="text-xs text-blue-500 mt-0.5">Checked in and complete.</p>
+                </div>
+                <button
+                  onClick={() => setDeleteModal(true)}
+                  disabled={actioning}
+                  className="w-full py-2.5 text-sm font-semibold rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                >
+                  🗑 Delete this record
+                </button>
+              </div>
+            )}
+
+            {booking.status === 'REJECTED' && (
+              <button
+                onClick={() => setDeleteModal(true)}
+                disabled={actioning}
+                className="w-full py-2.5 text-sm font-semibold rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50 mt-3"
+              >
                 🗑 Delete this record
               </button>
-            </div>
-          )}
-
-          {booking.status === 'REJECTED' && (
-            <button onClick={() => setDeleteModal(true)} disabled={actioning}
-              className="w-full py-2.5 text-sm font-medium rounded-xl bg-red-50 text-red-600
-                         border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50 mt-3">
-              🗑 Delete this record
-            </button>
-          )}
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── Delete Modal ── */}
       <Modal open={deleteModal} onClose={() => setDeleteModal(false)}>
         <div className="p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xl flex-shrink-0">🗑</div>
+            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600 text-xl flex-shrink-0">
+              🗑
+            </div>
             <div>
               <h3 className="font-bold text-gray-900 text-lg">Delete Booking</h3>
               <p className="text-xs text-gray-400">Permanent — cannot be undone</p>
             </div>
           </div>
+
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-700">
             Delete booking for <span className="font-semibold">{booking.resourceName}</span> by{' '}
             <span className="font-semibold">{booking.userName ?? booking.userEmail}</span>?
           </div>
+
           <div className="flex gap-3">
-            <button onClick={handleDeleteConfirm} disabled={actioning}
-              className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-red-600 text-white
-                         hover:bg-red-700 transition-colors disabled:opacity-50">
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={actioning}
+              className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
               {actioning ? 'Deleting...' : '🗑 Delete permanently'}
             </button>
-            <button onClick={() => setDeleteModal(false)}
-              className="px-4 py-2.5 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200">
+            <button
+              onClick={() => setDeleteModal(false)}
+              className="px-4 py-2.5 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
               Cancel
             </button>
           </div>
@@ -416,10 +479,22 @@ export default function BookingDetailPage() {
 
 function DetailRow({ icon, label, value }) {
   return (
-    <div>
-      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium mb-0.5">{label}</p>
-      <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-        <span className="text-base">{icon}</span> {value}
+    <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+      <p className="text-xs text-gray-400 mb-1">{label}</p>
+      <p className="text-sm font-medium text-gray-800 flex items-center gap-2 leading-relaxed">
+        <span className="text-base">{icon}</span>
+        <span>{value}</span>
+      </p>
+    </div>
+  )
+}
+
+function InfoCard({ label, value, mono = false }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4">
+      <p className="text-xs text-gray-400 mb-1">{label}</p>
+      <p className={`text-sm font-semibold text-gray-800 ${mono ? 'font-mono tracking-wide' : ''}`}>
+        {value}
       </p>
     </div>
   )
