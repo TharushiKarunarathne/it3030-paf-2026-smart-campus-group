@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { createResource } from '../../api/resourceApi'
 import toast from 'react-hot-toast'
 
+// ── Resource type definitions with per-type field config ─────
 const RESOURCE_TYPES = {
   LECTURE_HALL: {
     label: 'Lecture Hall', icon: '🏛️',
@@ -76,6 +77,7 @@ const RESOURCE_TYPES = {
   },
 }
 
+// ── Helpers and sub-components ───────────────────────────────
 function buildEmptyDetails(type) {
   if (!RESOURCE_TYPES[type]) return {}
   return RESOURCE_TYPES[type].fields.reduce((acc, f) => {
@@ -141,6 +143,7 @@ function DetailsField({ field, value, onChange }) {
 }
 
 export default function NewResourcePage() {
+  // ── State ──────────────────────────────────────────────────
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     name: '', type: 'LECTURE_HALL',
@@ -148,6 +151,7 @@ export default function NewResourcePage() {
   })
   const [details, setDetails] = useState(buildEmptyDetails('LECTURE_HALL'))
 
+  // ── Event handlers ──────────────────────────────────────────
   const handleFormChange = (e) => {
     const { name, value } = e.target
     if (name === 'type') {
@@ -165,6 +169,7 @@ export default function NewResourcePage() {
 
 const [created, setCreated] = useState(null)
 
+// ── Submit ──────────────────────────────────────────────────
 const handleSubmit = async () => {
   if (!form.name || !form.type) {
     toast.error('Name and type are required.')

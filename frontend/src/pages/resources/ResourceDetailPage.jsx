@@ -4,6 +4,7 @@ import { getResourceById, deleteResource, updateResourceStatus } from '../../api
 import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
 
+// ── Status and type display config ───────────────────────────
 const STATUS_STYLE = {
   AVAILABLE:   'bg-green-100 text-green-700',
   MAINTENANCE: 'bg-yellow-100 text-yellow-700',
@@ -17,6 +18,7 @@ const TYPE_ICON = {
   LAB:       '🖥️',
 }
 
+// ── Confirm delete dialog ────────────────────────────────────
 function ConfirmDialog({ message, subMessage, confirmLabel = 'Delete', onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -53,10 +55,13 @@ export default function ResourceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+
+  // ── State ──────────────────────────────────────────────────
   const [resource, setResource] = useState(null)
   const [loading, setLoading]   = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  // ── Data fetching ───────────────────────────────────────────
   useEffect(() => {
     const fetch = async () => {
       try {
@@ -72,6 +77,7 @@ export default function ResourceDetailPage() {
     fetch()
   }, [id, navigate])
 
+  // ── Event handlers ──────────────────────────────────────────
   const handleDelete = () => setShowDeleteConfirm(true)
 
   const confirmDelete = async () => {
