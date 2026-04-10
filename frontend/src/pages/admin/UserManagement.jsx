@@ -73,7 +73,7 @@ function AddUserModal({ onClose, onAdded }) {
   const [showPw, setShowPw]     = useState(false)
   const [loading, setLoading]   = useState(false)
   const [errors, setErrors]     = useState({})
-
+//validations
   const validate = () => {
     const e = {}
     if (!name.trim())              e.name     = 'Name is required'
