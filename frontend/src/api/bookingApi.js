@@ -24,5 +24,3 @@ export const createBooking = (data) =>
 export const updateBookingStatus = (id, status, adminNote) =>
   api.patch(`/bookings/${id}/status`, { status, adminNote })
 
-export const deleteBooking = (id) =>
-  api.delete(`/bookings/${id}`)
