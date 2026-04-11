@@ -86,6 +86,7 @@ public class BookingService {
                 + resource.getStatus() + ")"
             );
 
+        //check resource-specific booking 
         List<Booking> conflicts = bookingRepository.findConflictingBookings(
             resourceId, startTime, endTime
         );
@@ -173,6 +174,7 @@ public class BookingService {
             throw new RuntimeException("Please provide a reason for rejection");
         }
 
+        // If approving, check for conflicts one last time before saving
         if (newStatus == Booking.BookingStatus.APPROVED) {
             List<Booking> conflicts = bookingRepository.findConflictingBookings(
                 booking.getResourceId(),
